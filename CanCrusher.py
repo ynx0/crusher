@@ -1,11 +1,13 @@
 import time
 from CLUtil import Timer, FKIO
+# from RPIO import RPIO
+
 
 # from CLUtil import once
 
 dbg = True
 
-MOVE_TIME = 2
+MOVE_TIME = 7
 CRUSH_TIME = 2
 PUSH_TIME = 2
 

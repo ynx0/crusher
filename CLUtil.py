@@ -1,5 +1,11 @@
 import random
 import time
+import arrow
+import inspect
+
+import math
+
+dbg = False
 
 
 class Timer:
@@ -29,6 +35,8 @@ class Timer:
 
     def reset(self):
         self.started = False
+        self.t_end = -1  # YES THIS LINE FIXED IT because DONE WAS
+        # always true until it was restarted but it was never restarted
         if dbg:
             print("resetting timer")
 
