@@ -1,6 +1,6 @@
 import time
 from CLUtil import Timer, FKIO
-# from RPIO import RPIO
+from RPIO import RPIO
 
 
 # from CLUtil import once
@@ -24,7 +24,8 @@ PUSH_TIME = 2
 class TestCrusher:
     states = ['doing_nothing', 'moving_can', 'crushing_can', 'pushing_can', 'end_state']
     state = None
-    io = FKIO()
+    # io = FKIO()
+    io = RPIO()
     __cnt = 1
     move_timer = Timer(MOVE_TIME, "Move Timer")  # assumed arbitrary amount of time it will take to "move" the can
     crush_timer = Timer(CRUSH_TIME, "Crush Timer")
@@ -47,14 +48,14 @@ class TestCrusher:
         self.__cnt += 1
 
     def run(self):
-        self.io.fkio_cycle()
+        # self.io.fkio_cycle()
         emerg = self.io.chk_emrg()  # emergency button
         if emerg:
             self.state = 'end_state'
 
         # periodically update stuff like if can limit switch has been pressed here
         if self.state is 'doing_nothing':
-            if self.io.ls1:  # limit switch is pressed
+            if self.io.ls1.is_pressed:  # limit switch is pressed
                 self.state = self.states[1]
             print("doin nothing lmao")
 

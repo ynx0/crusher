@@ -3,6 +3,9 @@ import time
 from enum import Enum
 import atexit
 
+HOST = 'rpi.local'  # make sure to install mdns/avahi-daemon
+dbg = False
+
 
 class Type(Enum):
     INPUT = 0
@@ -11,14 +14,15 @@ class Type(Enum):
 
 class Devices:
     # BCM
-    LS1 = 27  # pin number
-    LS2 = 22
-    SOLENOID1 = 14
-    SOLENOID2 = 15
-    EMR_BTN = 23
+    LS1 = 19
+    CAN_CHECKER = 22
+    # LS2 = 22
+    SOLENOID1 = 13
+    SOLENOID2 = 6
+    # EMR_BTN = 23  # not implemented for now
 
 
-pi = pigpio.pi('crusherpi', 7777)
+pi = pigpio.pi(HOST)
 
 
 class RPIO:
@@ -39,6 +43,10 @@ class RPIO:
             super().__init__(label)
             self.type = Type.INPUT
 
+    """
+    The `IN` pins to control the relays must be pulled low to allow power to go thru (assuming a N.O. connection) 
+    """
+
     class Solenoid(Output):
         def __init__(self, label, pin):
             super().__init__(label)
@@ -47,19 +55,25 @@ class RPIO:
 
         def push(self):
             if self.pushed:
-                self.log("Already Pushed")
+                if dbg:
+                    self.log("Already Pushed")
             else:
                 self.log("pushing out")
-                pi.write(self.pin, 1)
+                pi.write(self.pin, 0)  # Pull low, activate relay, thus activating solenoid
                 time.sleep(1.5)  # TODO Figure out if we actually need this delay or not
                 self.pushed = True
+
+        def force_pull(self):
+            pi.write(self.pin, 1)
+            time.sleep(1.5)
+            self.pushed = False
 
         def pull(self):
             if self.pulled:
                 self.log("already pulled")
             else:
                 self.log("pulling in")
-                pi.write(self.pin, 0)
+                pi.write(self.pin, 1)
                 time.sleep(0.5)  # TODO Figure out if we need delay
                 self.pushed = False
 
@@ -74,26 +88,32 @@ class RPIO:
 
         @property
         def is_pressed(self):
-            return pi.read(self.pin)
+            return bool(pi.read(self.pin))
 
     def __init__(self):
         self.ls1 = self.Button("Feeder Limit Switch", Devices.LS1)
-        self.ls2 = self.Button("Can Limit Switch", Devices.LS2)
+        # self.ls2 = self.Button("Can Limit Switch", Devices.LS2)
         self.solenoid1 = self.Solenoid("Main Crusher", Devices.SOLENOID1)
         self.solenoid2 = self.Solenoid("Can Pusher", Devices.SOLENOID2)
-        self.emergency_btn = self.Button("Emergency Stop Button", Devices.EMR_BTN)
+        # self.emergency_btn = self.Button("Emergency Stop Button", Devices.EMR_BTN)
 
         atexit.register(self.cleanup)
         pi.set_mode(Devices.LS1, pigpio.INPUT)
-        pi.set_mode(Devices.LS2, pigpio.INPUT)
-        pi.set_mode(Devices.EMR_BTN, pigpio.INPUT)
+        # pi.set_mode(Devices.LS2, pigpio.INPUT)
+        # pi.set_mode(Devices.EMR_BTN, pigpio.INPUT)
         pi.set_mode(Devices.SOLENOID1, pigpio.OUTPUT)
         pi.set_mode(Devices.SOLENOID2, pigpio.OUTPUT)
 
     def chk_emrg(self):
-        return self.emergency_btn.is_pressed
+        return False  # TODO reeimplement self.emergency_btn.is_pressed
+
+    def pull_all(self):
+        self.solenoid1.force_pull()
+        self.solenoid2.force_pull()
 
     @staticmethod
     def cleanup():
-        pi.stop()
+        # TODO need to control relay VCC (5v) with transistor or smtn using GPIO
+        # so that we can short it 0v/GND
+        pi.stop()  # for now
         print("Cleaning up pgpio")
