@@ -32,6 +32,7 @@ class TestCrusher:
     push_timer = Timer(PUSH_TIME, "Push Timer")
     crush_delay = Timer(3, "Delay Crush")
     push_delay = Timer(1, "Push Delay")
+    robo_delay = Timer(1, "Robotic Arm Disengage Delay")
 
     def reset_timers(self):
         self.move_timer.reset()
@@ -39,6 +40,7 @@ class TestCrusher:
         self.push_timer.reset()
         self.crush_delay.reset()
         self.push_delay.reset()
+        self.robo_delay.reset()
 
     def __init__(self):
         self.state = self.states[0]  # initial state
@@ -61,14 +63,17 @@ class TestCrusher:
 
         elif self.state is 'moving_can':
             self.move_timer.start()
-            # print("Moving can\n{0} Seconds Remaining".format(self.move_timer.time_left))
+            self.robo_delay.start()
+            self.io.robotic_arm.enable()
+
+            if self.robo_delay.done:
+                self.io.robotic_arm.disable()
 
             if self.move_timer.done:
                 print("Done moving can, next state")
                 self.state = self.states[2]
 
         elif self.state is 'crushing_can':
-
             self.crush_delay.start()
 
             # todo add limit switch dependency

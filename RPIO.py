@@ -4,7 +4,8 @@ from enum import Enum
 import atexit
 
 HOST = 'rpi.local'  # make sure to install mdns/avahi-daemon
-dbg = False
+_dbg = False
+ROBOT_TRIGGER_DELAY = 1
 
 
 class Type(Enum):
@@ -20,6 +21,7 @@ class Devices:
     SOLENOID1 = 13
     SOLENOID2 = 6
     # EMR_BTN = 23  # not implemented for now
+    ROBOTIC_ARM = 24
 
 
 pi = pigpio.pi(HOST)
@@ -55,7 +57,7 @@ class RPIO:
 
         def push(self):
             if self.pushed:
-                if dbg:
+                if _dbg:
                     self.log("Already Pushed")
             else:
                 self.log("pushing out")
@@ -90,11 +92,36 @@ class RPIO:
         def is_pressed(self):
             return bool(pi.read(self.pin))
 
+    class RoboArm(Output):
+        def __init__(self, label, pin):
+            super().__init__(label)
+            self.pin = pin
+            self.enabled = False
+
+        def enable(self):
+            if not self.enabled:
+                pi.write(self.pin, 1)
+                self.enabled = True
+                self.log("Enabled")
+            else:
+                if _dbg:
+                    self.log("Already enabled")
+
+        def disable(self):
+            if self.enabled:
+                pi.write(self.pin, 0)
+                self.enabled = False
+                self.log("Enabled")
+            else:
+                if _dbg:
+                    self.log("Already disabled")
+
     def __init__(self):
         self.ls1 = self.Button("Feeder Limit Switch", Devices.LS1)
         # self.ls2 = self.Button("Can Limit Switch", Devices.LS2)
         self.solenoid1 = self.Solenoid("Main Crusher", Devices.SOLENOID1)
         self.solenoid2 = self.Solenoid("Can Pusher", Devices.SOLENOID2)
+        self.robotic_arm = self.RoboArm("Robotic Arm", Devices.ROBOTIC_ARM)
         # self.emergency_btn = self.Button("Emergency Stop Button", Devices.EMR_BTN)
 
         atexit.register(self.cleanup)
@@ -114,6 +141,6 @@ class RPIO:
     @staticmethod
     def cleanup():
         # TODO need to control relay VCC (5v) with transistor or smtn using GPIO
-        # so that we can short it 0v/GND
+        # so that we can short it 0v/GND when we stop the pi
         pi.stop()  # for now
         print("Cleaning up pgpio")
